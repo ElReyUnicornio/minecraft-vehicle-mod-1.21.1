@@ -2,10 +2,10 @@
 	"schemaVersion": 1,
 	"id": "vehicle",
 	"version": "${version}",
-	"name": "Vehicle",
+	"name": "vehicle",
 	"description": "This is an example description! Tell everyone what your mod is about!",
 	"authors": [
-		"Me!"
+		"ElReyUnicornio"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
@@ -23,11 +23,7 @@
 		]
 	},
 	"mixins": [
-		"vehicle.mixins.json",
-		{
-			"config": "vehicle.client.mixins.json",
-			"environment": "client"
-		}
+		"vehicle.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.16.10",
