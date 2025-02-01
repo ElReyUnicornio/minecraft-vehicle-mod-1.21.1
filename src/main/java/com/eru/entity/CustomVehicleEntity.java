@@ -7,12 +7,15 @@ import net.minecraft.entity.*;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
+import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.passive.HorseEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.tag.EntityTypeTags;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import com.eru.KeyPress;
@@ -106,6 +109,7 @@ public class CustomVehicleEntity extends Entity {
             float horizontal = 0.0f;
             float vertical = 0.0f;
             float yaw = 0.0f;
+            float f = 2.0f;
             Vehicle.LOGGER.info("has passenger...");
             List<Entity> list = this.getPassengerList();
             if (!list.isEmpty()) {
@@ -123,8 +127,8 @@ public class CustomVehicleEntity extends Entity {
                 Vehicle.LOGGER.info("Moving...");
                 Vehicle.LOGGER.info("horizontal: {}", horizontal);
                 Vehicle.LOGGER.info("vertical: {}", vertical);
-                Vehicle.LOGGER.info("YAW: {}", yaw);
-                this.setYaw(this.getYaw() + yaw);
+                Vehicle.LOGGER.info("YAW: {}", yaw * f);
+                this.setYaw(this.getYaw() + yaw * f);
                 this.setVelocity(rotateVelocity(new Vec3d(horizontal, -1.0f, vertical), this.getYaw()));
             }
         }
@@ -180,15 +184,6 @@ public class CustomVehicleEntity extends Entity {
             this.lerpPosAndRotation(this.lerpTicks, this.x, this.y, this.z, this.vehicleYaw, this.vehiclePitch);
             this.lerpTicks--;
         }
-    }
-
-    private void updateVelocity() {
-        double d = -this.getFinalGravity();
-        this.velocityDecay = 0.9F;
-
-        Vec3d vec3d = this.getVelocity();
-        this.setVelocity(vec3d.x * (double) this.velocityDecay, vec3d.y + d, vec3d.z * (double) this.velocityDecay);
-        this.yawVelocity = this.yawVelocity * this.velocityDecay;
     }
 
     @Override
@@ -270,6 +265,24 @@ public class CustomVehicleEntity extends Entity {
         }
 
         return new Vec3d(rotateVelocity(new Vec3d(x, 1.2, z), this.getYaw()).toVector3f());
+    }
+
+    protected void updatePassengerPosition(Entity passenger, Entity.PositionUpdater positionUpdater) {
+        super.updatePassengerPosition(passenger, positionUpdater);
+        passenger.setBodyYaw(this.getYaw());
+        passenger.prevYaw += this.yawVelocity;
+        passenger.setYaw(passenger.getYaw() + this.yawVelocity);
+        passenger.setHeadYaw(passenger.getHeadYaw() + this.yawVelocity);
+        clampPassengerYaw(passenger);
+    }
+
+    protected void clampPassengerYaw(Entity passenger) {
+        passenger.setBodyYaw(this.getYaw());
+        float f = MathHelper.wrapDegrees(passenger.getYaw() - this.getYaw());
+        float g = MathHelper.clamp(f, -45.0F, 45.0F);
+        passenger.prevYaw += g - f;
+        passenger.setYaw(passenger.getYaw() + g - f);
+        passenger.setHeadYaw(passenger.getYaw());
     }
 
     public int getPassenger(Entity passenger) {
