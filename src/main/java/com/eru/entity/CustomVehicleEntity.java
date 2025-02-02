@@ -160,7 +160,7 @@ public class CustomVehicleEntity extends Entity {
         this.updateDataTrackers(kp.passenger_id);
 
         if (this.getWorld().isClient && requiresUpdate) {
-            ClientPlayNetworking.send(new UpdateControlsPayload(kp));
+            ClientPlayNetworking.send(new UpdateControlsPayload(kp.toByte()));
         }
     }
 

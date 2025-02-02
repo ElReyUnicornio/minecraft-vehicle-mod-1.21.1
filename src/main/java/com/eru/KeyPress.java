@@ -8,23 +8,6 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 
 public class KeyPress {
-    public static final PacketCodec<ByteBuf, KeyPress> PACKET_CODEC = new PacketCodec<ByteBuf, KeyPress>() {
-        public KeyPress decode(ByteBuf byteBuf) {
-            return new KeyPress(new PacketByteBuf(byteBuf));
-        }
-
-        public void encode(ByteBuf byteBuf, KeyPress kp) {
-            PacketByteBuf buf = new PacketByteBuf(byteBuf);
-
-            buf.writeInt(kp.passenger_id);
-            buf.writeBoolean(kp.forward);
-            buf.writeBoolean(kp.backward);
-            buf.writeBoolean(kp.left);
-            buf.writeBoolean(kp.right);
-            buf.writeBoolean(kp.turn_l);
-            buf.writeBoolean(kp.turn_r);
-        }
-    };;
     public int passenger_id;
     public boolean forward;
     public boolean backward;
@@ -53,15 +36,15 @@ public class KeyPress {
         this.turn_r = tr;
     }
 
-    public KeyPress(PacketByteBuf pbb) {
-        this.passenger_id = pbb.readInt();
+    public KeyPress(int id, Byte inputs) {
+        this.passenger_id = id;
 
-        this.forward = pbb.readBoolean();
-        this.backward = pbb.readBoolean();
-        this.left = pbb.readBoolean();
-        this.right = pbb.readBoolean();
-        this.turn_l = pbb.readBoolean();
-        this.turn_r = pbb.readBoolean();
+        this.forward  = (inputs & (1 << 0)) != 0;
+        this.backward = (inputs & (1 << 1)) != 0;
+        this.left     = (inputs & (1 << 2)) != 0;
+        this.right    = (inputs & (1 << 3)) != 0;
+        this.turn_l   = (inputs & (1 << 4)) != 0;
+        this.turn_r   = (inputs & (1 << 5)) != 0;
     }
 
     @Override
@@ -76,5 +59,17 @@ public class KeyPress {
         s += this.turn_r ? "TR" : "-";
 
         return s;
+    }
+
+    public Byte toByte() {
+        byte packedByte = 0;
+        packedByte |= (byte) (this.forward  ? 1 << 0 : 0);
+        packedByte |= (byte) (this.backward ? 1 << 1 : 0);
+        packedByte |= (byte) (this.left     ? 1 << 2 : 0);
+        packedByte |= (byte) (this.right    ? 1 << 3 : 0);
+        packedByte |= (byte) (this.turn_l   ? 1 << 4 : 0);
+        packedByte |= (byte) (this.turn_r   ? 1 << 5 : 0);
+
+        return packedByte;
     }
 }
