@@ -1,11 +1,6 @@
 package com.eru;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import net.minecraft.client.input.Input;
-import net.minecraft.entity.passive.HorseEntity;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.codec.PacketCodec;
 
 public class KeyPress {
     public int passenger_id;
@@ -47,6 +42,18 @@ public class KeyPress {
         this.turn_r   = (inputs & (1 << 5)) != 0;
     }
 
+    public Byte toByte() {
+        byte packedByte = 0;
+        packedByte |= (byte) (this.forward  ? 1 << 0 : 0);
+        packedByte |= (byte) (this.backward ? 1 << 1 : 0);
+        packedByte |= (byte) (this.left     ? 1 << 2 : 0);
+        packedByte |= (byte) (this.right    ? 1 << 3 : 0);
+        packedByte |= (byte) (this.turn_l   ? 1 << 4 : 0);
+        packedByte |= (byte) (this.turn_r   ? 1 << 5 : 0);
+
+        return packedByte;
+    }
+
     @Override
     public String toString() {
         String s = "PressedKeys: ";
@@ -59,17 +66,5 @@ public class KeyPress {
         s += this.turn_r ? "TR" : "-";
 
         return s;
-    }
-
-    public Byte toByte() {
-        byte packedByte = 0;
-        packedByte |= (byte) (this.forward  ? 1 << 0 : 0);
-        packedByte |= (byte) (this.backward ? 1 << 1 : 0);
-        packedByte |= (byte) (this.left     ? 1 << 2 : 0);
-        packedByte |= (byte) (this.right    ? 1 << 3 : 0);
-        packedByte |= (byte) (this.turn_l   ? 1 << 4 : 0);
-        packedByte |= (byte) (this.turn_r   ? 1 << 5 : 0);
-
-        return packedByte;
     }
 }

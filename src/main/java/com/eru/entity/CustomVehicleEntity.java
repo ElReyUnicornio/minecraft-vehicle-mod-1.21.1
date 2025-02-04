@@ -5,13 +5,8 @@ import com.eru.network.UpdateControlsPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.entity.*;
 import net.minecraft.entity.data.DataTracker;
-import net.minecraft.entity.data.TrackedData;
-import net.minecraft.entity.data.TrackedDataHandlerRegistry;
-import net.minecraft.entity.passive.AnimalEntity;
-import net.minecraft.entity.passive.HorseEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.tag.EntityTypeTags;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Direction;
@@ -19,31 +14,11 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import com.eru.KeyPress;
-
-import java.util.ArrayList;
 import java.util.List;
 
 
 public class CustomVehicleEntity extends Entity {
     public static int MAX_PASSENGERS = 4;
-    private static final List<TrackedData<Boolean>> FORWARD = new ArrayList<>();
-    private static final List<TrackedData<Boolean>> BACKWARD = new ArrayList<>();
-    private static final List<TrackedData<Boolean>> LEFT = new ArrayList<>();
-    private static final List<TrackedData<Boolean>> RIGHT = new ArrayList<>();
-    private static final List<TrackedData<Boolean>> TURN_L = new ArrayList<>();
-    private static final List<TrackedData<Boolean>> TURN_R = new ArrayList<>();
-
-
-    static {
-        for (int i = 0; i < MAX_PASSENGERS; i++) {
-            FORWARD.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-            BACKWARD.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-            LEFT.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-            RIGHT.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-            TURN_L.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-            TURN_R.add(DataTracker.registerData(CustomVehicleEntity.class, TrackedDataHandlerRegistry.BOOLEAN));
-        }
-    }
 
     public float MAX_VELOCITY = 3;
     private float velocityDecay;
@@ -64,23 +39,6 @@ public class CustomVehicleEntity extends Entity {
 
     @Override
     protected void initDataTracker(DataTracker.Builder builder) {
-        for (int i = 0; i < MAX_PASSENGERS; i++) {
-            builder.add(FORWARD.get(i), false);
-            builder.add(BACKWARD.get(i), false);
-            builder.add(LEFT.get(i), false);
-            builder.add(RIGHT.get(i), false);
-            builder.add(TURN_L.get(i), false);
-            builder.add(TURN_R.get(i), false);
-        }
-    }
-
-    public void updateDataTrackers(int id) {
-        this.dataTracker.set(FORWARD.get(id), this.keys[id].forward);
-        this.dataTracker.set(BACKWARD.get(id), this.keys[id].backward);
-        this.dataTracker.set(LEFT.get(id), this.keys[id].left);
-        this.dataTracker.set(RIGHT.get(id), this.keys[id].right);
-        this.dataTracker.set(TURN_L.get(id), this.keys[id].turn_l);
-        this.dataTracker.set(TURN_R.get(id), this.keys[id].turn_r);
     }
 
     @Override
@@ -99,6 +57,7 @@ public class CustomVehicleEntity extends Entity {
         this.updatePositionAndRotation();
         this.setRotation(this.getYaw(), this.getPitch());
         if (this.isLogicalSideForUpdatingMovement()) {
+            if (!this.hasPassengers()) this.updateVelocity();
             this.tickMovement();
             this.move(MovementType.SELF, this.getVelocity());
         }
@@ -134,6 +93,23 @@ public class CustomVehicleEntity extends Entity {
         }
     }
 
+    public void updateControls(KeyPress kp) {
+        if (this.keys[kp.passenger_id] == null) this.keys[kp.passenger_id] = new KeyPress();
+
+        boolean requiresUpdate = kp.forward != this.keys[kp.passenger_id].forward
+                || kp.backward != this.keys[kp.passenger_id].backward
+                || kp.left != this.keys[kp.passenger_id].left
+                || kp.right != this.keys[kp.passenger_id].right
+                || kp.turn_l != this.keys[kp.passenger_id].turn_l
+                || kp.turn_r != this.keys[kp.passenger_id].turn_r;
+
+        this.keys[kp.passenger_id] = kp;
+
+        if (this.getWorld().isClient && requiresUpdate) {
+            ClientPlayNetworking.send(new UpdateControlsPayload(kp.toByte()));
+        }
+    }
+
     public Vec3d rotateVelocity(Vec3d velocity, float yawDegrees) {
         double yawRadians = Math.toRadians(yawDegrees);
 
@@ -146,22 +122,12 @@ public class CustomVehicleEntity extends Entity {
         return new Vec3d(newX, velocity.y, newZ);
     }
 
-    public void updateControls(KeyPress kp) {
-        if (this.keys[kp.passenger_id] == null) this.keys[kp.passenger_id] = new KeyPress();
-
-        boolean requiresUpdate = kp.forward != this.keys[kp.passenger_id].forward
-                || kp.backward != this.keys[kp.passenger_id].backward
-                || kp.left != this.keys[kp.passenger_id].left
-                || kp.right != this.keys[kp.passenger_id].right
-                || kp.turn_l != this.keys[kp.passenger_id].turn_l
-                || kp.turn_r != this.keys[kp.passenger_id].turn_r;
-
-        this.keys[kp.passenger_id] = kp;
-        this.updateDataTrackers(kp.passenger_id);
-
-        if (this.getWorld().isClient && requiresUpdate) {
-            ClientPlayNetworking.send(new UpdateControlsPayload(kp.toByte()));
-        }
+    private void updateVelocity() {
+        double d = -this.getFinalGravity();
+        this.velocityDecay = 0.9F;
+        Vec3d vec3d = this.getVelocity();
+        this.setVelocity(vec3d.x * (double)this.velocityDecay, vec3d.y + d, vec3d.z * (double)this.velocityDecay);
+        this.yawVelocity *= this.velocityDecay;
     }
 
     @Override
